@@ -1,0 +1,130 @@
+# Home Assistant - Auton lämmitys
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.autonlammitysaika:
+      icon: mdi:timelapse
+
+    sensor.autonlammitysaloitusaika:
+      icon: mdi:timelapse
+
+    sensor.auton_lammitysteho:
+      friendly_name: Auton lämmitysteho
+      icon: mdi:flash
+
+    switch.auton_lammitys:
+      friendly_name: Auton lämmitys
+      icon: mdi:radiator
+
+switch:
+  - platform: mqtt
+    name: "Auton lammitys"
+    state_topic: "autotalli/1/stat"
+    command_topic: "autotalli/1"
+    qos: 0
+    payload_on: "on"
+    payload_off: "off"
+    retain: true
+
+input_select:
+  autonlammitysasetus:
+    name: Auton lämmityksen asetus
+    options:
+      - Automaattinen
+      - Manuaalinen
+    initial: Manuaalinen
+    icon: mdi:settings
+
+input_datetime:
+  lahtoaika:
+    name: Lähtöaika
+    has_date: false
+    has_time: true
+    initial: '07:15'
+
+sensor:
+  - platform: template
+    sensors:
+      # Auton tarvittavan lämmitysajan laskenta
+      autonlammitysaika:
+        value_template: '{%if states.sensor.nilan_t1_temp.state | float>0%}0{%elif states.sensor.nilan_t1_temp.state | float<-10 %}120{%else%}{{(states.sensor.nilan_t1_temp.state|multiply(-9)+30)|int}}{%endif%}'
+        friendly_name: 'Tarvittava lämmitysaika'
+        unit_of_measurement: "min"
+
+      # Auton tarvittavan lämmityksen aloitusajan laskenta
+      autonlammitysaloitusaika:
+        value_template: '{% if ((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)|int < 10 %}0{% endif %}{{((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)|int}}:{% if ((((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)-((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)|int)*60)|int < 10 %}0{% endif %}{{((((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)-((states.input_datetime.lahtoaika.state[0:2]|int*60+states.input_datetime.lahtoaika.state[3:5]|int-states.sensor.autonlammitysaika.state|int)/60)|int)*60)|int}}'
+        friendly_name: 'Lämmityksen aloitusaika'
+
+  - platform: mqtt
+    scan_interval: 600
+    name: "Auton lammitysteho"
+    state_topic: "autotalli/1/power"
+    qos: 1
+    unit_of_measurement: "W"
+    value_template: "{{ value_json.Power }}"
+
+automation:
+  - alias: 'Auton lämmitys pois'
+    trigger:
+      platform: template
+      value_template: '{{states.sensor.time.state == states.input_datetime.lahtoaika.state[0:5]}}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.auton_lammitys
+          state: 'on'
+        - condition: state
+          entity_id: input_select.autonlammitysasetus
+          state: 'Automaattinen'
+    action:
+      - delay:
+          minutes: 10
+      - service: switch.turn_off
+        entity_id: switch.auton_lammitys
+
+  - alias: 'Auton lämmitys päälle'
+    trigger:
+      platform: template
+      value_template: '{{states.sensor.time.state == states.sensor.autonlammitysaloitusaika.state}}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.auton_lammitys
+          state: 'off'
+        - condition: state
+          entity_id: input_select.autonlammitysasetus
+          state: 'Automaattinen'
+        - condition: numeric_state
+          entity_id: sensor.autonlammitysaika
+          above: '0'
+        - condition: time
+          weekday:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+    action:
+      - service: switch.turn_on
+        entity_id: switch.auton_lammitys
+
+  - alias: 'Auton lämmitys pois viimeistään kolmen tunnin päästä aloituksesta'
+    trigger:
+      platform: state
+      entity_id: switch.auton_lammitys
+      to: 'on'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.autonlammitysasetus
+          state: 'Automaattinen'
+    action:
+      - delay:
+          hours: 3
+      - service: switch.turn_off
+        entity_id: switch.auton_lammitys

@@ -1,0 +1,521 @@
+# Home Assistant - Nilan EC9
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.sisailma_humidity:
+      friendly_name: Suhteellinen kosteus
+      icon: mdi:water-percent
+      device_class: humidity
+
+    sensor.co2_median:
+      friendly_name: CO2-pitoisuus
+      icon: mdi:periodic-table-co2
+
+    sensor.voc_median:
+      friendly_name: VOC-pitoisuus
+      icon: mdi:alert
+
+    switch.lattialammitys:
+      icon: mdi:radiator
+
+    sensor.nilan_kompressori:
+      friendly_name: Kompressori
+      icon: mdi:power-standby
+
+    sensor.nilan_lattialammitysteho:
+      friendly_name: Lattialämmitysteho
+      icon: mdi:flash
+
+    input_number.nilan_lampotilapyynto:
+      icon: mdi:radiator
+
+    input_number.nilan_ilmanvaihtopyynto:
+      icon: mdi:fan
+
+    sensor.nilan_tila:
+      friendly_name: Tila
+      icon: mdi:settings
+
+    sensor.nilan_halytys:
+      friendly_name: Hälytykset
+      icon: mdi:alarm-light
+
+    sensor.nilan_exhaust_fan_speed:
+      friendly_name: Poistopuhallin
+      icon: mdi:fan
+
+    sensor.nilan_inlet_fan_speed:
+      friendly_name: Tulopuhallin
+      icon: mdi:fan
+
+    sensor.nilan_t1_temp:
+      friendly_name: Ulkoilma
+      icon: mdi:thermometer
+
+    sensor.nilan_t5_temp:
+      friendly_name: Lauhdutin
+      icon: mdi:thermometer
+
+    sensor.nilan_t6_temp:
+      friendly_name: Haihdutin
+      icon: mdi:thermometer
+
+    sensor.nilan_t7_temp:
+      friendly_name: Tuloilma
+      icon: mdi:thermometer
+
+    sensor.nilan_t10_temp:
+      friendly_name: Poistoilma
+      icon: mdi:thermometer
+
+    sensor.nilan_t11_temp:
+      friendly_name: Varaaja (ylä)
+      icon: mdi:thermometer
+
+    sensor.nilan_t12_temp:
+      friendly_name: Varaaja (ala)
+      icon: mdi:thermometer
+
+    sensor.nilan_t14_temp:
+      friendly_name: Lattialämmitys
+      icon: mdi:thermometer
+
+    sensor.poistohyoty:
+      icon: mdi:chart-line
+
+    sensor.tulohyoty:
+      icon: mdi:chart-line
+
+switch:
+  - platform: rpi_gpio
+    invert_logic: true
+    ports:
+      21: Takkakytkin
+      16: Ilmanvaihdon tehostus
+
+  - platform: template
+    switches:
+      lattialammitys:
+        friendly_name: "Lattialämmitys"
+        value_template: "{{ is_state('input_boolean.lattialammitys', 'on') }}"
+        turn_on:
+          service: script.lattialammitys_paalle
+        turn_off:
+          service: script.lattialammitys_pois
+
+input_select:
+  ivtehostusasetus:
+    name: Ilmanvaihdon tehostus
+    options:
+      - Automaattinen
+      - Manuaalinen
+    initial: Automaattinen
+    icon: mdi:settings
+
+  nilan_asetus:
+    name: Lämmitysvalinta
+    options:
+      - Lämmitys
+      - Jäähdytys
+      - Automaattinen
+    initial: Automaattinen
+    icon: mdi:settings
+
+input_number:
+  nilan_lampotilapyynto:
+    name: Lämpötilapyyntö
+    initial: 30
+    min: 15
+    max: 30
+    step: 1
+
+  nilan_ilmanvaihtopyynto:
+    name: Puhaltimet
+    initial: 2
+    min: 1
+    max: 4
+    step: 1
+
+sensor:
+#HOLDING REGISTERS
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_compressor_state
+    value_template: '{{ value_json.h_109 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_heater_relay1
+    value_template: '{{ value_json.h_119 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_heater_relay2
+    value_template: '{{ value_json.h_120 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_exhaust_fan_speed
+    unit_of_measurement: '%'
+    value_template: '{{ value_json.h_200 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_inlet_fan_speed
+    unit_of_measurement: '%'
+    value_template: '{{ value_json.h_201 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_control_run
+    value_template: '{{ value_json.h_1001 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_control_mode
+    value_template: '{{ value_json.h_1002 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_control_ventset
+    value_template: '{{ value_json.h_1003 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/h_registers.json"
+    scan_interval: 300
+    name: nilan_control_tempset
+    unit_of_measurement: '°C'
+    value_template: '{{ value_json.h_1004 }}'
+
+#INPUT REGISTERS
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t1_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_201 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t5_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_205 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t6_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_206 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t7_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_207 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t10_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_210 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t11_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_211 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t12_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_212 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_t14_temp
+    unit_of_measurement: °C
+    value_template: '{{ value_json.i_214 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_alarm
+    value_template: '{{ value_json.i_400 }}'
+  - platform: file
+    file_path: "/home/homeassistant/.homeassistant/custom_components/nilan/i_registers.json"
+    scan_interval: 300
+    name: nilan_state
+    value_template: '{{ value_json.i_1002 }}'
+
+# NILAN IAQ
+  - platform: file
+    name: sisailma_temperature
+    file_path: "/home/homeassistant/.homeassistant/custom_components/iaq/ilma.json"
+    value_template: '{{ value_json.temperature }}'
+    unit_of_measurement: "°C"
+    scan_interval: 300
+  - platform: file
+    name: sisailma_humidity
+    file_path: "/home/homeassistant/.homeassistant/custom_components/iaq/ilma.json"
+    value_template: '{{ value_json.humidity }}'
+    unit_of_measurement: "%"
+    scan_interval: 300
+  - platform: file
+    name: sisailma_CO2
+    file_path: "/home/homeassistant/.homeassistant/custom_components/iaq/ilma.json"
+    value_template: '{{ value_json.CO2 }}'
+    unit_of_measurement: "ppm"
+    scan_interval: 300
+  - platform: file
+    name: sisailma_TVOC
+    file_path: "/home/homeassistant/.homeassistant/custom_components/iaq/ilma.json"
+    value_template: '{{ value_json.TVOC }}'
+    unit_of_measurement: "ppb"
+    scan_interval: 300
+
+# Jäteilma 1W:lla koska sitä ei saa Modbus:n kautta
+  - platform: command_line
+    name: Jäteilma
+    scan_interval: 300
+    command: "cat /home/homeassistant/.homeassistant/custom_components/1w/1w.log"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    sensors:
+      nilan_lattialammitysteho:
+        value_template: '{{((states.sensor.nilan_heater_relay1.state|int)+(states.sensor.nilan_heater_relay2.state|int))*3000}}'
+        unit_of_measurement: 'W'
+
+      nilan_tila:
+        friendly_name: 'Tila'
+        value_template: >-
+          {%if is_state("sensor.nilan_state", "0") %}Off
+          {%elif is_state("sensor.nilan_state", "1") %}Shift
+          {%elif is_state("sensor.nilan_state", "2") %}Stop
+          {%elif is_state("sensor.nilan_state", "3") %}Start
+          {%elif is_state("sensor.nilan_state", "4") %}Valmiustila
+          {%elif is_state("sensor.nilan_state", "5") %}Ilmanvaihto pysäytetty
+          {%elif is_state("sensor.nilan_state", "6") %}Ilmanvaihto
+          {%elif is_state("sensor.nilan_state", "7") %}Lämmitys
+          {%elif is_state("sensor.nilan_state", "8") %}Jäähdytys
+          {%elif is_state("sensor.nilan_state", "9") %}Lämmitys + vesi
+          {%elif is_state("sensor.nilan_state", "10") %}Legionella-ajo
+          {%elif is_state("sensor.nilan_state", "11") %}Jäähdytys + vesi
+          {%elif is_state("sensor.nilan_state", "12") %}Keskuslämmitys
+          {%elif is_state("sensor.nilan_state", "13") %}Sulatus
+          {%elif is_state("sensor.nilan_state", "14") %}Frost secure
+          {%elif is_state("sensor.nilan_state", "15") %}Huolto
+          {%elif is_state("sensor.nilan_state", "16") %}Hälytys
+          {%- endif %}
+
+      nilan_halytys:
+        friendly_name: 'Hälytys'
+        value_template: >-
+          {%if is_state("sensor.nilan_alarm", "0") %}Ei hälytyksiä
+          {%else%} Tarkista hälytykset!
+          {%- endif %}
+
+      pilp_status:
+        value_template: '{%if float(states.sensor.nilan_t1_temp.state) - float(states.sensor.nilan_t7_temp.state)>5%}Jäähdytys{%elif float(states.sensor.nilan_t1_temp.state) - float(states.sensor.nilan_t7_temp.state)<-5%}Lämmitys{%else%}Ilmanvaihto{%endif%}'
+        friendly_name: 'Tila'
+        icon_template: '{%if float(states.sensor.nilan_t1_temp.state) - float(states.sensor.nilan_t7_temp.state)>5%}mdi:snowflake{%elif float(states.sensor.nilan_t1_temp.state) - float(states.sensor.nilan_t7_temp.state)<-5%}mdi:radiator{%else%}mdi:fan{%endif%}'
+
+      poistohyoty:
+        value_template: '{{((float(states.sensor.jateilma.state)-float(states.sensor.nilan_t10_temp.state))/(float(states.sensor.nilan_t1_temp.state)-float(states.sensor.nilan_t10_temp.state))*100) | round(1)}}'
+        unit_of_measurement: "%"
+        friendly_name: 'Poistohyötysuhde'
+
+      tulohyoty:
+        value_template: '{{((float(states.sensor.nilan_t7_temp.state)-float(states.sensor.nilan_t1_temp.state))/(float(states.sensor.nilan_t10_temp.state)-float(states.sensor.nilan_t1_temp.state))*100) | round(1)}}'
+        unit_of_measurement: "%"
+        friendly_name: 'Tulohyötysuhde'
+
+      voc_median:
+        value_template: '{{states.sensor.stats_voc_mean.attributes.median|int}}'
+        unit_of_measurement: "ppb"
+
+      co2_median:
+        value_template: '{{states.sensor.stats_co2_mean.attributes.median|int}}'
+        unit_of_measurement: "ppm"
+
+      nilan_kompressori:
+        value_template: '{%if is_state("sensor.nilan_compressor_state", "0") %}Pois{%else%}Päällä{%- endif %}'
+
+# Statistiikkasensoreilla vältetään virhepiikit
+  - platform: statistics
+    scan_interval: 300
+    name: stats_voc
+    entity_id: sensor.sisailma_tvoc
+    sampling_size: 5
+  - platform: statistics
+    scan_interval: 300
+    name: stats_co2
+    entity_id: sensor.sisailma_co2
+    sampling_size: 5
+
+shell_command:
+  set_nilan_temp: "/home/homeassistant/.homeassistant/custom_components/nilan/aseta_lammitys {{ states('input_number.nilan_lampotilapyynto') | int *100 }}"
+  set_nilan_vent: "/home/homeassistant/.homeassistant/custom_components/nilan/aseta_ilmanvaihto {{ states('input_number.nilan_ilmanvaihtopyynto') | int }}"
+  set_nilan_state: "/home/homeassistant/.homeassistant/custom_components/nilan/aseta_tila {%if states.input_select.nilan_asetus.state == 'Lämmitys' %}1{%elif states.input_select.nilan_asetus.state == 'Jäähdytys' %}2{%else%}3{%endif%} {{ states('input_number.nilan_ilmanvaihtopyynto') | int }}"
+  lattialammitys_paalle: '/home/homeassistant/.homeassistant/custom_components/nilan/lammitys_paalle &'
+  lattialammitys_pois: '/home/homeassistant/.homeassistant/custom_components/nilan/lammitys_pois &'
+
+automation:
+  - alias: "Ilmoitus lämmityshäiriöstä, alilämpö"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.nilan_t14_temp
+      below: '23'
+    action:
+      service: notify.email_kimmo
+      data:
+        message: "Lämmitysveden lämpötila on {{ states.sensor.nilan_t14_temp.state}} \xB0C. Tarkista ylilämpösuoja."
+
+  - alias: "Ilmoitus lämmityshäiriöstä, ylilämpö"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.nilan_t14_temp
+      above: '45'
+    action:
+      service: notify.email_kimmo
+      data:
+        message: "Lämmitysveden lämpötila on {{ states.sensor.nilan_t14_temp.state}} \xB0C. Tarkista ylilämpösuoja."
+
+  - alias: 'PILP lämmityspyyntö'
+    trigger:
+      platform: state
+      entity_id: input_number.nilan_lampotilapyynto
+    action:
+      - service: shell_command.set_nilan_temp
+
+  - alias: 'PILP lämmityspyyntösliderin päivitys jos muutettu seinäpaneelista'
+    trigger:
+      platform: state
+      entity_id: sensor.nilan_control_tempset
+    action:
+      service: input_number.set_value
+      data_template:
+        entity_id: input_number.nilan_lampotilapyynto
+        value: "{{ states.sensor.nilan_control_tempset.state | int }}"
+
+  - alias: 'PILP ilmanvaihtopyyntö'
+    trigger:
+      platform: state
+      entity_id: input_number.nilan_ilmanvaihtopyynto
+    action:
+      - service: shell_command.set_nilan_vent
+
+  - alias: 'PILP ilmanvaihtopyyntösliderin päivitys jos muutettu seinäpaneelista'
+    trigger:
+      platform: state
+      entity_id: sensor.nilan_control_ventset
+    action:
+      service: input_number.set_value
+      data_template:
+        entity_id: input_number.nilan_ilmanvaihtopyynto
+        value: "{{ states.sensor.nilan_control_ventset.state | int }}"
+
+  - alias: 'PILP asetus'
+    trigger:
+      platform: state
+      entity_id: input_select.nilan_asetus
+    action:
+      - service: shell_command.set_nilan_state
+
+  - alias: 'PILP asetus muutettu seinäpaneelista'
+    trigger:
+      platform: state
+      entity_id: sensor.nilan_control_mode
+    action:
+      service: input_select.select_option
+      data_template:
+        entity_id: input_select.nilan_asetus
+        option: "{%if trigger.to_state.state | int == 1 %}Lämmitys{%elif trigger.to_state.state | int == 2%}Jäähdytys{%else%}Automaattinen{%endif%}"
+
+  - alias: 'Ilmanvaihdon tehostus päälle, korkea CO2'
+    trigger:
+      platform: template
+      value_template: '{{states.sensor.stats_co2_mean.attributes.min_value > 700}}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.ilmanvaihdon_tehostus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.ivtehostusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.ilmanvaihdon_tehostus_paalle
+      - wait_template: "{{states.sensor.stats_co2_mean.attributes.min_value < 500}}"
+      - service: switch.turn_off
+        entity_id: switch.ilmanvaihdon_tehostus
+
+  - alias: 'Ilmanvaihdon tehostus päälle, korkea VOC'
+    trigger:
+      platform: template
+      value_template: '{{states.sensor.stats_voc_mean.attributes.min_value > 100}}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.ilmanvaihdon_tehostus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.ivtehostusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.ilmanvaihdon_tehostus_paalle
+      - wait_template: "{{states.sensor.stats_voc_mean.attributes.min_value < 50}}"
+      - service: switch.turn_off
+        entity_id: switch.ilmanvaihdon_tehostus
+
+script:
+  ilmanvaihdon_tehostus_paalle:
+    alias: Ilmanvaihdon tehostus päälle
+    sequence:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: sensor.pilp_status
+            state: 'Lämmitys'
+          - condition: state
+            entity_id: sensor.pilp_status
+            state: 'Ilmanvaihto'
+      - service: switch.turn_on
+        entity_id: switch.ilmanvaihdon_tehostus
+
+  takkakytkin:
+    alias: Ilmanvaihdon tehostus päälle
+    sequence:
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: sensor.pilp_status
+            state: 'Lämmitys'
+          - condition: state
+            entity_id: sensor.pilp_status
+            state: 'Ilmanvaihto'
+      - service: switch.turn_on
+        entity_id: switch.takkakytkin
+
+  lattialammitys_paalle:
+    sequence:
+      - service: script.turn_off
+        data:
+           entity_id: script.lattialammitys_paalle
+      - service: shell_command.lattialammitys_paalle
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.lattialammitys
+
+  lattialammitys_pois:
+    sequence:
+      - service: script.turn_off
+        data:
+           entity_id: script.lattialammitys_pois
+      - service: shell_command.lattialammitys_pois
+      - service: input_boolean.turn_off
+        data:
+          entity_id: input_boolean.lattialammitys

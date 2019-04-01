@@ -1,0 +1,47 @@
+# Home Assistant - Takka
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    switch.takkakytkin:
+      friendly_name: Takan sytytys
+      icon: mdi:weather-windy
+
+    switch.ilmanvaihdon_tehostus:
+      icon: mdi:weather-windy
+
+timer:
+  takkakytkin:
+    duration: '00:15:00'
+
+binary_sensor:
+  - platform: rpi_gpio
+    pull_mode: UP
+    bouncetime: 1
+    invert_logic: true
+    ports:
+      20: Takkakytkin
+
+automation:
+  - alias: "Takkakytkin painettu"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.takkakytkin
+      to: 'on'
+    action:
+      - service: script.takkakytkin
+      # Timer täytyy bugin vuoksi cancelloida erikseen jotta se resetoituu nappia uudelleen painettaessa
+      - service: timer.cancel
+        entity_id: timer.takkakytkin
+      - service: timer.start
+        entity_id: timer.takkakytkin
+
+  - alias: "Takkakytkin, ajastin päättyi"
+    trigger:
+      platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.takkakytkin
+    action:
+      - service: switch.turn_off
+        entity_id: switch.takkakytkin

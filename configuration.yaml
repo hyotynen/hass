@@ -1,0 +1,93 @@
+# Home Assistant - Main configuration
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  name: Koti
+  latitude: !secret latitude_koti
+  longitude: !secret longitude_koti
+  elevation: !secret elevation_koti
+  unit_system: metric
+  time_zone: Europe/Helsinki
+  packages: !include_dir_named packages
+  whitelist_external_dirs:
+    - '/home/homeassistant/.homeassistant/custom_components/ruuvi/'
+    - '/home/homeassistant/.homeassistant/custom_components/iaq/'
+    - '/home/homeassistant/.homeassistant/custom_components/nilan/'
+  auth_providers:
+    - type: legacy_api_password
+      api_password: !secret http_password
+
+map:
+config:
+updater:
+conversation:
+ios:
+system_health:
+custom_updater:
+
+homekit: !include homekit.yaml
+history: !include history.yaml
+logbook: !include logbook.yaml
+
+lovelace:
+  mode: yaml
+
+frontend:
+  themes:
+    custom:
+      primary-color: "#204959"
+      paper-card-background-color: "rgba(235,244,247,.9)"
+
+http:
+  ip_ban_enabled: True
+  login_attempts_threshold: 10
+
+mysensors:
+  gateways:
+    - device: mqtt
+      persistence_file: '/home/homeassistant/.homeassistant/mysensors.json'
+      topic_in_prefix: 'mygateway1-out'
+      topic_out_prefix: 'mygateway1-in'
+  version: '2.0'
+
+# Text to speech
+tts:
+  - platform: google
+    cache: true
+    cache_dir: /tmp/tts
+
+mqtt:
+  password: !secret mqtt_password
+
+recorder:
+  db_url: !secret recorder_url 
+  purge_keep_days: 7
+  purge_interval: 1
+
+notify:
+  - name: email_kimmo
+    platform: smtp
+    server: !secret smtp_server
+    port: !secret smtp_port
+    timeout: 15
+    sender: !secret smtp_sender
+    encryption: !secret smtp_encryption
+    username: !secret smtp_username
+    password: !secret smtp_password
+    recipient: !secret smtp_recipient
+    sender_name: Home Assistant @ Koti
+
+  - name: ios
+    platform: ios
+
+logger:
+  default: warning
+  logs:
+    homeassistant.components.sensor.bh1750: critical
+    homeassistant.components.tplink: critical
+
+calendar:
+  - platform: caldav
+    url: !secret caldav_url 
+    username: !secret caldav_username
+    password: !secret caldav_password

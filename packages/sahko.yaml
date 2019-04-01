@@ -1,0 +1,167 @@
+# Home Assistant - Sähkön kulutus ja tehorajoitus
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    input_number.tehorajoituksen_ylaraja:
+      icon: mdi:arrow-collapse-up
+
+    input_number.tehorajoituksen_alaraja:
+      icon: mdi:arrow-collapse-down
+
+    sensor.watt:
+      friendly_name: Hetkellinen kulutus
+      icon: mdi:flash
+
+    sensor.kulutus_tanaan:
+      friendly_name: Tänään
+      icon: mdi:flash
+
+    sensor.kwh_eilinen:
+      friendly_name: Eilinen
+      icon: mdi:flash
+
+    sensor.kwh_viikko:
+      friendly_name: Kuluva viikko
+      icon: mdi:flash
+
+    sensor.kwh_ed_viikko:
+      friendly_name: Edellinen viikko
+      icon: mdi:flash
+
+    sensor.kwh_kk:
+      friendly_name: Kuluva kuukausi
+      icon: mdi:flash
+
+    sensor.kwh_ed_kk:
+      friendly_name: Edellinen kuukausi
+      icon: mdi:flash
+
+input_select:
+  tehorajoitus:
+    name: Tehorajoitus
+    options:
+      - Automaattinen
+      - Manuaalinen
+    initial: Automaattinen
+    icon: mdi:settings
+
+input_number:
+  tehorajoituksen_ylaraja:
+    name: Yläraja
+    initial: 8500
+    min: 100
+    max: 12000
+    step: 100
+
+  tehorajoituksen_alaraja:
+    name: Alaraja
+    initial: 2200
+    min: 100
+    max: 12000
+    step: 100
+
+input_boolean:
+  lattialammitys:
+    initial: on
+
+sensor:
+  - platform: command_line
+    name: watt
+    command: "cat /home/homeassistant/.homeassistant/mysensors.json"
+    value_template: '{{ value_json["0"]["children"]["1"]["values"]["17"]|float }}'
+    unit_of_measurement: "W"
+    scan_interval: 60
+
+  - platform: command_line
+    name: kulutus_tanaan
+    command: "cat /home/homeassistant/.homeassistant/mysensors.json"
+    value_template: '{{(value_json["0"]["children"]["1"]["values"]["18"]|float-states.sensor.kwh_eilinen.attributes.kWh_cum)|round(2)}}'
+    unit_of_measurement: "kWh"
+    scan_interval: 300
+
+  - platform: sql
+    scan_interval: 3600
+    db_url: !secret kulutus_db_url
+    queries:
+      - name: kwh_eilinen
+        query: 'SELECT * FROM kulutus WHERE date = CURDATE() - 1'
+        column: 'kWh'
+        unit_of_measurement: kWh
+
+  - platform: sql
+    scan_interval: 3600
+    db_url: !secret kulutus_db_url
+    queries:
+      - name: kwh_viikko
+        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE yearweek(DATE(date), 1) = yearweek(curdate(), 1)'
+        column: 'ROUND(SUM(kWh),2)'
+        unit_of_measurement: kWh
+
+  - platform: sql
+    scan_interval: 3600
+    db_url: !secret kulutus_db_url
+    queries:
+      - name: kwh_ed_viikko
+        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE date between NOW() - INTERVAL DAYOFWEEK(NOW())+6 DAY AND NOW() - INTERVAL DAYOFWEEK(NOW())-1 DAY'
+        column: 'ROUND(SUM(kWh),2)'
+        unit_of_measurement: kWh
+
+  - platform: sql
+    scan_interval: 3600
+    db_url: !secret kulutus_db_url
+    queries:
+      - name: kwh_kk
+        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE) AND MONTH(date) = MONTH(CURRENT_DATE)'
+        column: 'ROUND(SUM(kWh),2)'
+        unit_of_measurement: kWh
+
+  - platform: sql
+    scan_interval: 3600
+    db_url: !secret kulutus_db_url
+    queries:
+      - name: kwh_ed_kk
+        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(date) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)'
+        column: 'ROUND(SUM(kWh),2)'
+        unit_of_measurement: kWh
+
+automation:
+  - alias: "Lattialämmitys pois raja ylitettäessä"
+    trigger:
+      platform: template
+      value_template: "{% if (states.sensor.watt.state|float)>(states.input_number.tehorajoituksen_ylaraja.state|float)%}true{% endif %}"
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.tehorajoitus
+          state: 'Automaattinen'
+    action:
+      - service: automation.turn_on
+        entity_id: automation.lattialammitys_paalle_raja_alitettaessa
+      - service: automation.turn_off
+        entity_id: automation.lattialammitys_pois_raja_ylitettaessa
+      - service: notify.email_kimmo
+        data:
+          message: "Hetkellinen teho on {{ states.sensor.watt.state}} \xB0C. Lattialämmitys sammutettu."
+      - service: script.lattialammitys_pois
+
+  - alias: "Lattialämmitys päälle raja alitettaessa"
+    trigger:
+      platform: template
+      value_template: "{% if (states.sensor.watt.state|float)<(states.input_number.tehorajoituksen_alaraja.state|float)%}true{% endif %}"
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.tehorajoitus
+          state: 'Automaattinen'
+    action:
+      - service: automation.turn_off
+        entity_id: automation.lattialammitys_paalle_raja_alitettaessa
+      - service: automation.turn_on
+        entity_id: automation.lattialammitys_pois_raja_ylitettaessa
+      - service: notify.email_kimmo
+        data:
+          message: "Hetkellinen teho on {{ states.sensor.watt.state}} \xB0C. Lattialämmitys käynnistetty."
+      - service: script.lattialammitys_paalle

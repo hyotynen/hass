@@ -1,0 +1,85 @@
+# Home Assistant - Järjestelmä
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.speedtest_download:
+      icon: mdi:download
+      friendly_name: Lataustesti
+
+    sensor.speedtest_upload:
+      icon: mdi:upload
+      friendly_name: Lähetystesti
+
+    sensor.speedtest_ping:
+      friendly_name: Viivetesti
+
+    sensor.asuswrt_download_speed:
+      icon: mdi:download
+      friendly_name: Latausnopeus
+
+    sensor.asuswrt_upload_speed:
+      icon: mdi:upload
+      friendly_name: Lähetysnopeus
+
+    sensor.uptime:
+      icon: mdi:timelapse
+
+    sensor.cpu_kuorma:
+      friendly_name: CPU kuorma
+      icon: mdi:chip
+
+speedtestdotnet:
+  scan_interval:
+    hours: 6
+  monitored_conditions:
+    - ping
+    - download
+    - upload
+
+asuswrt:
+  host: !secret asuswrt_host
+  username: !secret asuswrt_username
+  password: !secret asuswrt_password
+  sensors:
+    - upload_speed
+    - download_speed
+
+sensor:
+  - platform: template
+    sensors:
+      uptime:
+        value_template: '{{states.sensor.last_boot.state[0:2]|replace(":", "")}} päivää'
+        friendly_name: 'Käynnissä'
+
+      cpu_kuorma:
+        value_template: '{{(states.sensor.load_5m.state|float*100)|round(0)}}'
+        friendly_name: 'CPU Kuorma'
+        unit_of_measurement: "%"
+
+  - platform: command_line
+    name: CPU Lämpötila
+    scan_interval: 600
+    command: "cat /sys/class/thermal/thermal_zone0/temp"
+    unit_of_measurement: "°C"
+    value_template: '{{ value | multiply(0.001) | round(1)}}'
+
+  - platform: systemmonitor
+    scan_interval: 600
+    resources:
+      - type: load_5m
+      - type: last_boot
+
+  - platform: time_date
+    display_options:
+      - 'time'
+
+automation:
+  - alias: 'Ilmoitus uudesta versiosta'
+    trigger:
+      platform: state
+      entity_id: updater.updater
+    action:
+      service: notify.email_kimmo
+      data:
+        message: 'Home Assistant päivitys saatavilla'

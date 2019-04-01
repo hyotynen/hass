@@ -1,0 +1,69 @@
+# Home Assistant - Kylpyhuone
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.kylpyhuone_temperature:
+      friendly_name: Lämpötila
+      icon: mdi:thermometer
+
+    sensor.kylpyhuone_humidity:
+      friendly_name: Suhteellinen kosteus
+      icon: mdi:water-percent
+      device_class: humidity
+
+    sensor.absol_kosteus_kylpyhuone:
+      icon: mdi:water
+
+    sensor.kylpyhuone_pressure:
+      friendly_name: Ilmanpaine
+      icon: mdi:oil-temperature
+
+sensor:
+  - platform: file
+    name: kylpyhuone_temperature
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/kylpyhuone.json"
+    value_template: '{{ value_json.temperature }}'
+    unit_of_measurement: "°C"
+    scan_interval: 300
+
+  - platform: file
+    name: kylpyhuone_humidity
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/kylpyhuone.json"
+    value_template: '{{ value_json.humidity }}'
+    unit_of_measurement: "%"
+    scan_interval: 300
+
+  - platform: file
+    name: kylpyhuone_pressure
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/kylpyhuone.json"
+    value_template: '{{ value_json.pressure }}'
+    unit_of_measurement: "hPa"
+    scan_interval: 300
+
+  - platform: template
+    sensors:
+      absol_kosteus_kylpyhuone:
+        value_template: '{{((216.679*((float(states.sensor.kylpyhuone_humidity.state)*(6.1078 * (10**(7.500*float(states.sensor.kylpyhuone_temperature.state) / (float(states.sensor.kylpyhuone_temperature.state)+237.3)))))/100))/(float(states.sensor.kylpyhuone_temperature.state)+273.15))|round(2)}}'
+        friendly_name: 'Absoluuttinen kosteus'
+        unit_of_measurement: "g/m³"
+
+automation:
+  - alias: 'Ilmanvaihdon tehostus päälle suihkussa käynnistä'
+    trigger:
+      platform: template
+      value_template: '{{(states.sensor.kylpyhuone_humidity.state|float - states.sensor.sisailma_humidity.state|float) > 10}}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.ilmanvaihdon_tehostus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.ivtehostusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.ilmanvaihdon_tehostus_paalle
+      - wait_template: "{{(states.sensor.kylpyhuone_humidity.state|float - states.sensor.sisailma_humidity.state|float) < 5}}"
+      - service: switch.turn_off
+        entity_id: switch.ilmanvaihdon_tehostus

@@ -1,0 +1,54 @@
+# Home Assistant - Säätiedot
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+weather:
+  - platform: met
+
+sun:
+
+homeassistant:
+  customize:
+    sensor.yr_cloudiness:
+      friendly_name: Pilvisyys
+      icon: mdi:cloud
+
+    sensor.yr_precipitation:
+      friendly_name: Sademäärä
+      icon: mdi:weather-rainy
+
+    weather.met_no:
+      friendly_name: ' '
+
+    sensor.pv_pituus:
+      icon: mdi:timelapse
+
+    sensor.absol_kosteus_ulko:
+      icon: mdi:water
+
+sensor:
+  - platform: yr
+    monitored_conditions:
+      - precipitation
+      - cloudiness
+
+  - platform: template
+    scan_interval: 600
+    sensors:
+      aurinko:
+        value_template: '{% if is_state("sun.sun", "above_horizon") %}laskee klo {{((as_timestamp(states.sun.sun.attributes.next_setting)) | timestamp_local) [11:16] }}{% else %}nousee klo {{((as_timestamp(states.sun.sun.attributes.next_rising)) | timestamp_local) [11:16] }}{% endif %}'
+        icon_template: '{% if is_state("sun.sun", "above_horizon") %}mdi:weather-sunny{% else %}mdi:weather-night{% endif %}'
+        friendly_name: 'Aurinko'
+
+      pv_pituus:
+        value_template: '{% if as_timestamp(states.sun.sun.attributes.next_noon) > as_timestamp(states.sun.sun.attributes.next_setting) %}{{(((as_timestamp(states.sun.sun.attributes.next_noon)-as_timestamp(states.sun.sun.attributes.next_rising))*2)//3600) | round(0)}} tuntia {{(((as_timestamp(states.sun.sun.attributes.next_noon)-as_timestamp(states.sun.sun.attributes.next_rising))*2)%3600/60) | round(0)}} minuuttia{% else %}{{(((as_timestamp(states.sun.sun.attributes.next_setting)-as_timestamp(states.sun.sun.attributes.next_noon))*2)//3600) | round(0)}} tuntia {{(((as_timestamp(states.sun.sun.attributes.next_setting)-as_timestamp(states.sun.sun.attributes.next_noon))*2)%3600/60) | round(0)}} minuuttia{% endif %}'
+        friendly_name: 'Päivän pituus'
+
+      pakkasen_purevuus:
+        value_template: '{%if float(states.sensor.nilan_t1_temp.state)>10 or states.weather.met_no.attributes.wind_speed<0.3%}{{states.sensor.nilan_t1_temp.state}}{%else %}{{(13.12+0.6215*float(states.sensor.nilan_t1_temp.state)-13.956*(states.weather.met_no.attributes.wind_speed/3.6)**0.16+0.4867*float(states.sensor.nilan_t1_temp.state)*(states.weather.met_no.attributes.wind_speed/3.6)**0.16) | round(1)}}{%endif%}'
+        unit_of_measurement: "°C"
+        friendly_name: 'Tuulen vaikutus'
+
+      absol_kosteus_ulko:
+        value_template: '{{((216.679*((states.weather.met_no.attributes.humidity*(6.1078 * (10**(7.500*float(states.sensor.nilan_t1_temp.state) / (float(states.sensor.nilan_t1_temp.state)+237.3)))))/100))/(float(states.sensor.nilan_t1_temp.state)+273.15))|round(2)}}'
+        friendly_name: 'Absoluuttinen kosteus'
+        unit_of_measurement: "g/m³"

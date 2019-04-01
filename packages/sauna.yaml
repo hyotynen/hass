@@ -1,0 +1,68 @@
+# Home Assistant - Sauna
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.sauna_temperature:
+      friendly_name: Lämpötila
+      icon: mdi:thermometer
+
+    sensor.sauna_humidity:
+      friendly_name: Suhteellinen kosteus
+      icon: mdi:water-percent
+      device_class: humidity
+
+    sensor.absol_kosteus_sauna:
+      icon: mdi:water
+
+    sensor.sauna_pressure:
+      friendly_name: Ilmanpaine
+      icon: mdi:oil-temperature
+
+sensor:
+  - platform: file
+    name: sauna_temperature
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/sauna.json"
+    value_template: '{{ value_json.temperature }}'
+    unit_of_measurement: "°C"
+    scan_interval: 300
+
+  - platform: file
+    name: sauna_humidity
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/sauna.json"
+    value_template: '{{ value_json.humidity }}'
+    unit_of_measurement: "%"
+    scan_interval: 300
+
+  - platform: file
+    name: sauna_pressure
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/sauna.json"
+    value_template: '{{ value_json.pressure }}'
+    unit_of_measurement: "hPa"
+    scan_interval: 300
+
+  - platform: template
+    sensors:
+      absol_kosteus_sauna:
+        value_template: '{{((216.679*((float(states.sensor.sauna_humidity.state)*(6.1078 * (10**(7.500*float(states.sensor.sauna_temperature.state) / (float(states.sensor.sauna_temperature.state)+237.3)))))/100))/(float(states.sensor.sauna_temperature.state)+273.15))|round(2)}}'
+        friendly_name: 'Absoluuttinen kosteus'
+        unit_of_measurement: "g/m³"
+
+automation:
+  - alias: "Ilmoitus kun sauna on lämmin"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.sauna_temperature
+      above: '50'
+    action:
+      - service: notify.ios
+        data:
+          message: "Saunan lämpötila on {{ states.sensor.sauna_temperature.state\
+          \ }} \xB0C ja suhteellinen kosteus on {{states.sensor.sauna_humidity.state}} %"
+          title: Sauna on lämmin
+      - service: script.ilmanvaihdon_tehostus_paalle
+      - delay:
+          minutes: 90
+      - service: switch.turn_off
+        entity_id: switch.ilmanvaihdon_tehostus
+

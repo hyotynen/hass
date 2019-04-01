@@ -1,0 +1,112 @@
+# Home Assistant - Autotalli
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.autotalli_temperature:
+      friendly_name: Lämpötila
+      icon: mdi:thermometer
+
+    sensor.autotalli_humidity:
+      friendly_name: Suhteellinen kosteus
+      icon: mdi:water-percent
+      device_class: humidity
+
+    sensor.absol_kosteus_autotalli:
+      icon: mdi:water
+
+    sensor.autotalli_pressure:
+      friendly_name: Ilmanpaine
+      icon: mdi:oil-temperature
+
+    switch.autotallin_ilmanvaihdon_tehostus:
+      friendly_name: Ilmanvaihdon tehostus
+      icon: mdi:weather-windy
+
+switch:
+  - platform: mqtt
+    name: "Autotallin ilmanvaihdon tehostus"
+    state_topic: "autotalli/2/stat"
+    command_topic: "autotalli/2"
+    qos: 0
+    payload_on: "on"
+    payload_off: "off"
+    retain: true
+
+input_select:
+  at_ivtehostusasetus:
+    name: Ilmanvaihdon tehostuksen asetus
+    options:
+      - Automaattinen
+      - Manuaalinen
+    initial: Automaattinen
+    icon: mdi:settings
+
+sensor:
+  - platform: file
+    name: autotalli_temperature
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/autotalli.json"
+    value_template: '{{ value_json.temperature }}'
+    unit_of_measurement: "°C"
+    scan_interval: 300
+
+  - platform: file
+    name: autotalli_humidity
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/autotalli.json"
+    value_template: '{{ value_json.humidity }}'
+    unit_of_measurement: "%"
+    scan_interval: 300
+
+  - platform: file
+    name: autotalli_pressure
+    file_path: "/home/homeassistant/.homeassistant/custom_components/ruuvi/autotalli.json"
+    value_template: '{{ value_json.pressure }}'
+    unit_of_measurement: "hPa"
+    scan_interval: 300
+
+  - platform: template
+    sensors:
+      absol_kosteus_autotalli:
+        value_template: '{{((216.679*((float(states.sensor.autotalli_humidity.state)*(6.1078 * (10**(7.500*float(states.sensor.autotalli_temperature.state) / (float(states.sensor.autotalli_temperature.state)+237.3)))))/100))/(float(states.sensor.autotalli_temperature.state)+273.15))|round(2)}}'
+        friendly_name: 'Absoluuttinen kosteus'
+        unit_of_measurement: "g/m³"
+
+automation:
+  - alias: "Ilmoitus jos autotallin lämpötila on alhainen"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.autotalli_temperature
+      below: '4'
+    action:
+      service: notify.email_kimmo
+      data:
+        message: "Autotallin lämpötila on {{ states.sensor.autotalli_temperature.state\
+        \ }} \xB0C ja suhteellinen kosteus {{states.sensor.autotalli_humidity.state}} %"
+
+  - alias: 'Autotallin ilmanvaihdon tehostus päälle, korkea kosteus'
+    trigger:
+      platform: time_pattern
+      minutes: '/10'
+      seconds: 00
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.autotallin_ilmanvaihdon_tehostus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.at_ivtehostusasetus
+          state: 'Automaattinen'
+        - condition: template
+          value_template: '{{states.sensor.autotalli_humidity.state|float > 60}}'
+        - condition: template
+          value_template: '{{states.sensor.absol_kosteus_autotalli.state|float > (states.sensor.absol_kosteus_ulko.state|float)+1}}'
+        - condition: numeric_state
+          entity_id: sensor.autotalli_temperature
+          above: '5'
+    action:
+      - service: switch.turn_on
+        entity_id: switch.autotallin_ilmanvaihdon_tehostus
+      - wait_template: '{{states.sensor.autotalli_humidity.state|float < 55 or states.sensor.absol_kosteus_autotalli.state|float < states.sensor.absol_kosteus_ulko.state|float or states.sensor.autotalli_temperature.state|float < 5}}'
+      - service: switch.turn_off
+        entity_id: switch.autotallin_ilmanvaihdon_tehostus

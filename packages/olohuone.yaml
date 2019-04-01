@@ -1,0 +1,265 @@
+# Home Assistant - Olohuone
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.olohuoneen_valoisuus_median:
+      friendly_name: Valoisuus
+      icon: mdi:lightbulb-on-outline
+
+    switch.sohvaryhman_valaistus:
+      friendly_name: Sohvaryhmän valaistus
+      icon: mdi:lightbulb
+
+    switch.takan_valaistus:
+      friendly_name: Takan valaistus
+      icon: mdi:lightbulb
+
+media_player:
+  - platform: onkyo
+    host: !secret onkyo_host
+    name: Onkyo
+
+#tplink:
+#  discovery: false
+#  switch:
+# Robotti-imuri
+#    - host: !secret tplink1_host
+# Sisäkoristevalot
+#    - host: !secret tplink4_host
+
+switch:
+  - platform: mqtt
+    name: "Sohvaryhman valaistus"
+    state_topic: "talo/olohuone/1/stat"
+    command_topic: "talo/olohuone/1"
+    qos: 0
+    payload_on: "on"
+    payload_off: "off"
+    retain: true
+
+  - platform: mqtt
+    name: "Takan valaistus"
+    state_topic: "talo/olohuone/2/stat"
+    command_topic: "talo/olohuone/2"
+    qos: 0
+    payload_on: "on"
+    payload_off: "off"
+    retain: false
+
+input_select:
+  olohuoneen_valaistusasetus:
+    name: Valaistuksen asetus
+    options:
+      - Automaattinen
+      - Manuaalinen
+      - Poissaolo
+    initial: Automaattinen
+    icon: mdi:settings
+
+sensor:
+  - platform: bh1750
+    name: Olohuoneen valoisuus
+    i2c_address: 0x23
+    operation_mode: one_time_high_res_mode_1
+    measurement_delay_ms: 200
+    scan_interval: 60
+
+  - platform: statistics
+    name: stats_olohuoneen_valoisuus
+    entity_id: sensor.olohuoneen_valoisuus
+    sampling_size: 3
+
+  - platform: template
+    scan_interval: 60
+    sensors:
+      olohuoneen_valoisuus_median:
+        value_template: '{{states.sensor.stats_olohuoneen_valoisuus_mean.attributes.median|int}}'
+        unit_of_measurement: "lx"
+
+automation:
+  - alias: 'Valot päälle hämärän aikaan jos joku on kotona'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.liikeilmaisimet
+      from: 'off'
+      to: 'on'
+    condition:
+      condition: and
+      conditions:
+        - condition: time
+          after: '9:00'
+          before: '22:00'
+        - condition: template
+          value_template: '{{ states.sensor.stats_olohuoneen_valoisuus_mean.attributes.median < 50 }}'
+        - condition: state
+          entity_id: switch.sohvaryhman_valaistus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.olohuoneen_valaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: switch.turn_on
+        entity_id: switch.takan_valaistus
+      - service: switch.turn_on
+        entity_id: switch.sohvaryhman_valaistus
+#      - service: script.sisakoristevalot_paalle
+
+  - alias: 'Valot pois illalla kun laitteet sammutetaan'
+    trigger:
+      platform: state
+      entity_id: media_player.onkyo
+      to: 'off'
+    condition:
+      condition: and
+      conditions:
+        - condition: time
+          after: '22:00'
+          before: '03:00'
+        - condition: state
+          entity_id: switch.sohvaryhman_valaistus
+          state: 'on'
+        - condition: state
+          entity_id: input_select.olohuoneen_valaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.olohuoneen_valot_pois_illalla
+#      - service: script.sisakoristevalot_pois
+
+  - alias: 'Valot pois jos ilma kirkastuu'
+    trigger:
+      platform: template
+      value_template: '{{ states.sensor.stats_olohuoneen_valoisuus_mean.attributes.median > 200 }}'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.sohvaryhman_valaistus
+          state: 'on'
+        - condition: state
+          entity_id: input_select.olohuoneen_valaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: switch.turn_off
+        entity_id: switch.takan_valaistus
+      - service: switch.turn_off
+        entity_id: switch.sohvaryhman_valaistus
+
+  - alias: 'Valot pois kun talo poissaviritetään'
+    trigger:
+      platform: state
+      entity_id: alarm_control_panel.talo
+      to: 'armed_away'
+    action:
+      - service: switch.turn_off
+        entity_id: switch.takan_valaistus
+      - service: switch.turn_off
+        entity_id: switch.sohvaryhman_valaistus
+#      - service: script.sisakoristevalot_pois
+
+  - alias: 'Valojen automaattisytytys pois päältä hetkeksi valot sammutettaessa'
+    trigger:
+      platform: state
+      entity_id: group.olohuone
+      from: 'on'
+      to: 'off'
+    action:
+      - service: automation.turn_off
+        entity_id: automation.valot_paalle_hamaran_aikaan_jos_joku_on_kotona
+      - delay:
+          minutes: 5
+      - service: automation.turn_on
+        data:
+          entity_id: automation.valot_paalle_hamaran_aikaan_jos_joku_on_kotona
+
+  - alias: 'Valot päälle auringon laskiessa jos poissaolotila asetettu'
+    trigger:
+      platform: numeric_state
+      entity_id: sun.sun
+      value_template: '{{ state.attributes.elevation }}'
+      below: 3.5
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.sohvaryhman_valaistus
+          state: 'off'
+        - condition: state
+          entity_id: input_select.olohuoneen_valaistusasetus
+          state: 'Poissaolo'
+    action:
+      - delay: '00:{{ range(11,30) | random | int }}:00'
+      - service: switch.turn_on
+        entity_id: switch.takan_valaistus
+      - service: switch.turn_on
+        entity_id: switch.sohvaryhman_valaistus
+
+  - alias: 'Valot pois klo 23 jälkeen jos poissaolotila asetettu'
+    trigger:
+      platform: time
+      at: '23:00:00'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: switch.sohvaryhman_valaistus
+          state: 'on'
+        - condition: state
+          entity_id: input_select.olohuoneen_valaistusasetus
+          state: 'Poissaolo'
+    action:
+      - delay: '00:{{ range(11,45) | random | int }}:00'
+      - service: switch.turn_off
+        entity_id: switch.takan_valaistus
+      - service: switch.turn_off
+        entity_id: switch.sohvaryhman_valaistus
+
+#  - alias: 'Robotti-imurin keskeytys viikonloppuisin'
+#    trigger:
+#      platform: time
+#      at: '09:50:00'
+#    condition:
+#      - condition: time
+#        weekday:
+#          - sat
+#          - sun
+#    action:
+#      - service: switch.turn_off
+#        entity_id: switch.tplink1
+#      - delay:
+#          minutes: 20
+#      - service: switch.turn_on
+#        entity_id: switch.tplink1
+
+script:
+  olohuoneen_valot_pois_illalla:
+    alias: Olohuoneen valot pois illalla jos Onkyo edelleen sammuksissa
+    sequence:
+      - delay: 00:05
+      - condition: state
+        entity_id: media_player.onkyo
+        state: 'off'
+      - service: switch.turn_off
+        entity_id: switch.sohvaryhman_valaistus
+      - service: switch.turn_off
+        entity_id: switch.takan_valaistus
+
+#  sisakoristevalot_paalle:
+#    alias: Sisäkoristevalot päälle
+#    sequence:
+#      - service: script.turn_off
+#        data:
+#           entity_id: script.sisakoristevalot_pois
+#      - wait_template: "{{ states.switch.tplink4.state == 'off' }}"
+#      - service: switch.turn_on
+#        entity_id: switch.tplink4
+
+#  sisakoristevalot_pois:
+#    alias: Sisäkoristevalot pois päältä
+#    sequence:
+#      - service: script.turn_off
+#        data:
+#           entity_id: script.sisakoristevalot_paalle
+#      - wait_template: "{{ states.switch.tplink4.state == 'on' }}"
+#      - service: switch.turn_off
+#        entity_id: switch.tplink4

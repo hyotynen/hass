@@ -1,0 +1,98 @@
+# Home Assistant - Pihan koristevalot (käytössä vain pimeimpänä vuodenaikana)
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    switch.tplink2:
+      friendly_name: Koristevalot
+      icon: mdi:lightbulb
+
+tplink:
+  discovery: false
+  switch:
+    - host: !secret tplink2_host
+
+input_select:
+  koristevalaistusasetus:
+    name: Valaistuksen asetus
+    options:
+      - Automaattinen
+      - Manuaalinen
+    initial: Manuaalinen
+    icon: mdi:settings
+
+script:
+  koristevalot_paalle:
+    alias: Koristevalot päälle
+    sequence:
+      - service: script.turn_off
+        data:
+          entity_id: script.koristevalot_pois
+      - wait_template: "{{ states.switch.tplink2.state == 'off' }}"
+      - service: switch.turn_on
+        entity_id: switch.tplink2
+
+  koristevalot_pois:
+    alias: Koristevalot pois päältä
+    sequence:
+      - service: script.turn_off
+        data:
+          entity_id: script.koristevalot_paalle
+      - wait_template: "{{ states.switch.tplink2.state == 'on' }}"
+      - service: switch.turn_off
+        entity_id: switch.tplink2
+
+automation:
+  - alias: 'Koristevalot päälle ennen auringon laskua'
+    trigger:
+      platform: sun
+      event: sunset
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.koristevalaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.koristevalot_paalle
+
+  - alias: 'Koristevalot pois auringon nousun jälkeen'
+    trigger:
+      platform: sun
+      event: sunrise
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.koristevalaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.koristevalot_pois
+
+  - alias: 'Koristevalot päälle aamulla'
+    trigger:
+      platform: time
+      at: '07:00'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.koristevalaistusasetus
+          state: 'Automaattinen'
+        - condition: sun
+          before: sunrise
+    action:
+      - service: script.koristevalot_paalle
+
+  - alias: 'Koristevalot pois illalla'
+    trigger:
+      platform: time
+      at: '23:59'
+    condition:
+      condition: and
+      conditions:
+        - condition: state
+          entity_id: input_select.koristevalaistusasetus
+          state: 'Automaattinen'
+    action:
+      - service: script.koristevalot_pois
