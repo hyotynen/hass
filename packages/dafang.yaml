@@ -1,0 +1,44 @@
+# Home Assistant - Xiaomi Dafang Camera
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+camera:
+  - platform: generic
+    name: Työhuone
+    username: !secret dafang_username
+    password: !secret dafang_password
+    authentication: basic
+    still_image_url: !secret dafang_url
+    verify_ssl: false
+    framerate: 1
+
+shell_command:
+  dafang_motor_up: !secret dafang_motor_up
+  dafang_motor_down: !secret dafang_motor_down
+  dafang_motor_right: !secret dafang_motor_right
+  dafang_motor_left: !secret dafang_motor_left
+  dafang_motor_reset: !secret dafang_motor_reset
+  dafang_nightvision_on: !secret dafang_nightvision_on
+  dafang_nightvision_off: !secret dafang_nightvision_off
+
+script:
+  dafang_motor_up:
+    sequence:
+      - service: shell_command.dafang_motor_up
+  dafang_motor_down:
+    sequence:
+      - service: shell_command.dafang_motor_down
+  dafang_motor_right:
+    sequence:
+      - service: shell_command.dafang_motor_right
+  dafang_motor_left:
+    sequence:
+      - service: shell_command.dafang_motor_left
+  dafang_motor_reset:
+    sequence:
+      - service: shell_command.dafang_motor_reset
+  dafang_nightvision_on:
+    sequence:
+      - service: shell_command.dafang_nightvision_on
+  dafang_nightvision_off:
+    sequence:
+      - service: shell_command.dafang_nightvision_off
