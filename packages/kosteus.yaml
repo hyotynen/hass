@@ -1,0 +1,75 @@
+# Home Assistant - Kosteusanturi
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+homeassistant:
+  customize:
+    sensor.leak_status:
+      friendly_name: Tila
+      icon: mdi:pipe-leak
+    sensor.leak_deviation:
+      friendly_name: Taso
+      icon: mdi:water-percent
+
+sensor:
+  - platform: command_line
+    name: leak_tripped
+    command: "cat /home/homeassistant/.homeassistant/mysensors.json"
+    value_template: '{{ value_json["0"]["children"]["2"]["values"]["16"]|int }}'
+    scan_interval: 30
+  - platform: command_line
+    name: leak_deviation
+    command: "cat /home/homeassistant/.homeassistant/mysensors.json"
+    value_template: '{{ value_json["0"]["children"]["2"]["values"]["26"]|int }}'
+    unit_of_measurement: "%"
+    scan_interval: 30
+  - platform: template
+    sensors:
+      leak_status:
+        value_template: '{%if states.sensor.leak_deviation.state |int>120 %}Kaapelivika!{%elif states.sensor.leak_deviation.state |int<85%}Vesivuoto!{%elif states.sensor.leak_deviation.state |int<90 and states.sensor.leak_deviation.state |int>85%}Kosteutta!{%else%}Ei kosteutta{%endif%}'
+
+automation:
+  - alias: "Viesti kosteusanturin varoituksesta"
+    trigger:
+      platform: state
+      entity_id: sensor.leak_tripped
+      to: '1'
+    condition:
+      condition: numeric_state
+      entity_id: sensor.leak_deviation
+      above: 85
+      below: 90
+    action:
+      - service: notify.ios
+        data:
+          message: "Kosteutta havaittu keittiön kaappien alla."
+          title: Kosteusvaroitus!
+
+  - alias: "Viesti kosteusanturin hälytyksestä"
+    trigger:
+      platform: state
+      entity_id: sensor.leak_tripped
+      to: '1'
+    condition:
+      condition: numeric_state
+      entity_id: sensor.leak_deviation
+      below: 85
+    action:
+      - service: notify.ios
+        data:
+          message: "Vesivuoto havaittu keittiön kaappien alla."
+          title: Vesivuotohälytys!
+
+  - alias: "Viesti kosteusanturin viasta"
+    trigger:
+      platform: state
+      entity_id: sensor.leak_tripped
+      to: '1'
+    condition:
+      condition: numeric_state
+      entity_id: sensor.leak_deviation
+      above: 120
+    action:
+      - service: notify.ios
+        data:
+          message: "Kosteusanturin kaapelivika"
+          title: Kosteusanturivika!
