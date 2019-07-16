@@ -1,0 +1,641 @@
+# Home Assistant Lovelace UI configuration
+# (c) Kimmo Hyötynen - https://hyotynen.iki.fi
+
+title: Koti
+background: center / cover no-repeat url("/local/background.jpg?v=1") fixed
+
+resources:
+  - url: /community_plugin/vertical-stack-in-card/vertical-stack-in-card.js
+    type: js
+  - url: https://unpkg.com/moment@2.22.2/moment.js
+    type: js
+  - url: /community_plugin/calendar-card/calendar-card.js
+    type: module
+  - url: /community_plugin/monster-card/monster-card.js
+    type: js
+  - url: /community_plugin/compact-custom-header/compact-custom-header.js
+    type: module
+  - url: /community_plugin/mini-media-player/mini-media-player.js
+    type: module
+  - url: /community_plugin/lovelace-card-mod/card-mod.js
+    type: module
+  - url: /community_plugin/canvas-gauge-card/canvas-gauge-card2.js
+    type: module
+  - url: /community_plugin/mini-graph-card/mini-graph-card.js
+    type: module
+  - url: /community_plugin/spotify-card/spotify-card.umd.js
+    type: module
+  - url: /community_plugin/lovelace-layout-card/layout-card.js
+    type: js
+  - url: /community_plugin/lovelace-card-tools/card-tools.js
+    type: js
+
+cch:
+  main_config: true
+  background: rgba(0,0,0,.6)
+  voice: clock
+  clock_am_pm: false
+  clock_format: 24
+  swipe: true
+  swipe_animate: swipe
+  conditional_styles:
+    - entity: notifications
+      condition:
+        state: false
+      button:
+        notifications:
+          hide: true
+
+anchors:
+  base_style: &base_style
+    style: |
+      ha-card {
+        border: solid 2px rgba(71,126,235,0.8);
+        background: rgba(0, 0, 0, .6);
+        box-shadow: 2px 2px 5px 0px rgba(0,0,0,0.3);
+      }
+
+  base_style_nomargin: &base_style_nomargin
+    style: |
+      ha-card {
+        border: solid 2px rgba(71,126,235,0.8);
+        background: rgba(0, 0, 0, .6);
+        box-shadow: 2px 2px 5px 0px rgba(0,0,0,0.3);
+        padding: 0px;
+      }
+      .card-content {
+        padding: 0px;
+      }
+      div {
+        margin: 0px !important;
+      }
+
+  gauge_card_style: &gauge_card_style
+    type: "radial-gauge"
+    fontUnitsSize: 25
+    minValue: 0
+    width: 150
+    height: 150
+    startAngle: 90
+    ticksAngle: 180
+    valueBox: false
+    minorTicks: 2
+    strokeTicks: true
+    borders: false
+    needleShadow: false
+    needleCircleSize: 7
+    colorPlate: "rgba(0,0,0,0)"
+    colorMajorTicks: "#999"
+    colorNumbers: "#999"
+    colorNeedle: "#123c95"
+    colorNeedleEnd: "#123c95"
+    colorNeedleCircleInner: "#477eeb"
+    colorNeedleCircleInnerEnd: "#477eeb"
+    colorNeedleCircleOuter: "#477eeb"
+    colorNeedleCircleOuterEnd: "#477eeb"
+
+views:
+  - title: Etusivu
+    icon: mdi:play
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            <<: *base_style
+            title: Perhe
+            show_header_toggle: false
+            entities:
+              - sensor.kimmo
+
+          - type: entities
+            <<: *base_style_nomargin
+            entities:
+              - type: "custom:calendar-card"
+                title: Menot
+                timeFormat: HH:mm
+                numberOfDays: 7
+                startFromToday: true
+                entities:
+                  - calendar.menot
+
+          - break
+          - type: entities
+            show_header_toggle: off
+            <<: *base_style_nomargin
+            entities:
+              - card:
+                type: custom:vertical-stack-in-card
+                cards:
+                  - type: weather-forecast
+                    entity: weather.home
+                    name: ' '
+                  - type: entities
+                    show_header_toggle: false
+                    entities:
+                      - sensor.pakkasen_purevuus
+                      - sensor.yr_cloudiness
+                      - sensor.yr_precipitation
+                      - sensor.aurinko
+                      - sensor.pv_pituus
+
+          - break
+          - type: iframe
+            <<: *base_style_nomargin
+            url: https://cdn.fmi.fi/javascript/metoclient-ui-product-1.6.13/products/animator-fi.html
+            aspect_ratio: 100%
+
+  - title: Sisätilat
+    icon: mdi:home-outline
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            <<: *base_style
+            title: Olohuone
+            show_header_toggle: true
+            entities:
+              - input_select.olohuoneen_valaistusasetus
+              - switch.sohvaryhman_valaistus
+              - switch.takan_valaistus
+              - sensor.olohuoneen_valoisuus_median
+
+          - type: entities
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:mini-media-player
+                entity: media_player.onkyo
+
+          - type: entities
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:mini-media-player
+                entity: media_player.spotify
+
+          - break
+          - type: entities
+            <<: *base_style_nomargin
+            entities:
+              - type: 'custom:spotify-card'
+                client_id: !secret spotify_client
+                device: 'Onkyo TX-NR686 EC99D5'
+                style:
+                  .: |
+                    spotify-card {
+                      background-color: #424242;
+                    }
+                  "#states spotify-card":
+                    $: |
+                      :host {
+                        background-color: #424242;
+                      }
+
+          - break
+          - type: entities
+            <<: *base_style
+            title: Sauna
+            show_header_toggle: false
+            entities:
+              - sensor.sauna_temperature
+              - sensor.sauna_humidity
+              - sensor.absol_kosteus_sauna
+              - sensor.sauna_pressure
+
+          - type: entities
+            <<: *base_style
+            title: Kylpyhuone
+            show_header_toggle: false
+            entities:
+              - sensor.kylpyhuone_temperature
+              - sensor.kylpyhuone_humidity
+              - sensor.absol_kosteus_kylpyhuone
+              - sensor.kylpyhuone_pressure
+
+  - title: Autotalli ja ulkotilat
+    icon: mdi:garage-open
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            <<: *base_style
+            title: Autotalli
+            show_header_toggle: false
+            entities:
+              - input_select.at_ivtehostusasetus
+              - switch.autotallin_ilmanvaihdon_tehostus
+              - sensor.autotalli_temperature
+              - sensor.autotalli_humidity
+              - sensor.absol_kosteus_autotalli
+              - entity: sensor.absol_kosteus_ulko
+                name: Absoluuttinen kosteus ulkona
+              - sensor.autotalli_pressure
+              - script.autotallin_nostoovi
+
+          - type: conditional
+            <<: *base_style
+            conditions:
+              - entity: switch.auton_lammitys
+                state: "on"
+            card:
+              type: entities
+              title: "Auton l\xE4mmitys"
+              show_header_toggle: false
+              entities:
+                - input_select.autonlammitysasetus
+                - switch.auton_lammitys
+                - input_datetime.lahtoaika
+                - sensor.autonlammitysaika
+                - sensor.autonlammitysaloitusaika
+                - sensor.auton_lammitysteho
+
+          - type: conditional
+            <<: *base_style
+            conditions:
+              - entity: switch.tplink2
+                state: "on"
+            card:
+              type: entities
+              title: Koristevalot
+              show_header_toggle: false
+              entities:
+                - input_select.koristevalaistusasetus
+                - switch.tplink2
+
+  - title: Poistoilmalämpöpumppu
+    icon: mdi:fan
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            show_header_toggle: false
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:vertical-stack-in-card
+                title: "Poistoilmal\xE4mp\xF6pumpun tiedot"
+                cards:
+                  - type: glance
+                    columns: 3
+                    entities:
+                      - sensor.nilan_tila
+                      - sensor.nilan_kompressori
+                      - sensor.nilan_halytys
+                      - sensor.sisailma_humidity
+                      - sensor.co2_median
+                      - sensor.voc_median
+                  - type: custom:mini-graph-card
+                    line_width: 2
+                    hour24: true
+                    points_per_hour: 2
+                    font_size: 70
+                    decimals: 1
+                    show: 
+                      name: false
+                      icon: false
+                      fill: false
+                      points: false
+                    entities:
+                      - entity: sensor.nilan_t7_temp
+                        name: Tuloilma
+                      - entity: sensor.nilan_t10_temp
+                        name: Poistoilma
+                      - entity: sensor.nilan_t1_temp
+                        name: Ulkoilma
+                      - entity: sensor.jateilma
+                        name: Jäteilma
+                  - type: glance
+                    columns: 4
+                    entities:
+                      - entity: sensor.nilan_inlet_fan_speed
+                        name: Tulopuhallin
+                      - entity: sensor.nilan_exhaust_fan_speed
+                        name: Poistopuhallin
+                      - sensor.tulohyoty
+                      - sensor.poistohyoty
+                  - type: custom:mini-graph-card
+                    line_width: 2
+                    hour24: true
+                    points_per_hour: 2
+                    font_size: 70
+                    decimals: 1
+                    show: 
+                      name: false
+                      icon: false
+                      fill: false
+                      points: false
+                    entities:
+                      - entity: sensor.nilan_t14_temp
+                        name: Lattialämmitys
+                      - entity: sensor.nilan_t11_temp
+                        name: Varaaja (ylä)
+                      - entity: sensor.nilan_t12_temp
+                        name: Varaaja (ala)
+          - break
+          - type: entities
+            <<: *base_style
+            title: "Poistoilmal\xE4mp\xF6pumpun asetukset"
+            show_header_toggle: false
+            entities:
+              - input_select.nilan_asetus
+              - input_number.nilan_lampotilapyynto
+              - input_number.nilan_ilmanvaihtopyynto
+              - switch.lattialammitys
+              - input_select.ivtehostusasetus
+              - switch.ilmanvaihdon_tehostus
+              - switch.takkakytkin
+
+  - title: "Turvallisuus"
+    icon: mdi:shield-home-outline
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: picture-glance
+            <<: *base_style_nomargin
+            camera_image: camera.tyohuone
+            entities:
+              - entity: script.dafang_motor_up
+                icon: mdi:arrow-up-bold
+              - entity: script.dafang_motor_down
+                icon: mdi:arrow-down-bold
+              - entity: script.dafang_motor_left
+                icon: mdi:arrow-left-bold
+              - entity: script.dafang_motor_right
+                icon: mdi:arrow-right-bold
+              - entity: script.dafang_motor_reset
+                icon: mdi:restart
+              - entity: script.dafang_nightvision_on
+                icon: mdi:weather-night
+              - entity: script.dafang_nightvision_off
+                icon: mdi:weather-sunny
+
+          - type: entities
+            show_header_toggle: off
+            title: Kosteushälytin
+            <<: *base_style
+            entities:
+              - sensor.leak_status
+              - sensor.leak_deviation
+
+  - title: "J\xE4rjestelm\xE4t"
+    icon: mdi:settings
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            show_header_toggle: off
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:vertical-stack-in-card
+                title: Home Assistant
+                cards:
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.cpu_kuorma
+                        card_height: 110
+                        gauge:
+                          units: "CPU Kuorma"
+                          title: "%"
+                          maxValue: 100
+                          majorTicks: ["0", "20", "40", "60", "80", "100"]
+                          highlights: [{"from": 80, "to": 100,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.cpu_lampotila
+                        card_height: 110
+                        gauge:
+                          units: "CPU Lämpötila"
+                          title: "°C"
+                          maxValue: 100
+                          majorTicks: ["0", "20", "40", "60", "80", "100"]
+                          highlights: [{"from": 80, "to": 100,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                  - type: entities
+                    entities:
+                      - sensor.uptime
+
+          - type: entities
+            show_header_toggle: off
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:vertical-stack-in-card
+                title: Internet
+                cards:
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.asuswrt_download_speed
+                        card_height: 110
+                        gauge:
+                          units: "Lataus"
+                          title: "Mt/s"
+                          maxValue: 60
+                          majorTicks: ["0", "10", "20", "30", "40", "50", "60"]
+                          highlights: [{"from": 50, "to": 60,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.asuswrt_upload_speed
+                        card_height: 110
+                        gauge:
+                          units: "Lähetys"
+                          title: "Mt/s"
+                          maxValue: 60
+                          majorTicks: ["0", "10", "20", "30", "40", "50", "60"]
+                          highlights: [{"from": 50, "to": 60,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.speedtest_download
+                        card_height: 110
+                        gauge:
+                          units: "SpeedTest"
+                          title: "Mt/s"
+                          maxValue: 60
+                          majorTicks: ["0", "10", "20", "30", "40", "50", "60"]
+                          highlights: [{"from": 0, "to": 20,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.speedtest_upload
+                        card_height: 110
+                        gauge:
+                          units: "SpeedTest"
+                          title: "Mt/s"
+                          maxValue: 60
+                          majorTicks: ["0", "10", "20", "30", "40", "50", "60"]
+                          highlights: [{"from": 0, "to": 20,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                  - type: custom:canvas-gauge-card
+                    entity: sensor.speedtest_ping
+                    card_height: 110
+                    gauge:
+                      units: "Ping"
+                      title: "ms"
+                      maxValue: 100
+                      majorTicks: ["0", "20", "40", "60", "80", "100"]
+                      highlights: [{"from": 60, "to": 100,"color": "rgba(71, 126, 235, .8)"}]
+                      <<: *gauge_card_style
+
+          - break
+          - type: entities
+            show_header_toggle: off
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:vertical-stack-in-card
+                title: "S\xE4hk\xF6n kulutus"
+                cards:
+                  - type: entities
+                    entities:
+                      - input_select.tehorajoitus
+                      - input_number.tehorajoituksen_ylaraja
+                      - input_number.tehorajoituksen_alaraja
+                  - type: custom:canvas-gauge-card
+                    entity: sensor.watt
+                    card_height: 110
+                    gauge:
+                      units: "Hetkellinen kulutus"
+                      title: "W"
+                      maxValue: 10000
+                      majorTicks: ["0", "2000", "4000", "6000", "8000", "10000"]
+                      highlights: [{"from": 6000, "to": 10000,"color": "rgba(71, 126, 235, .8)"}]
+                      <<: *gauge_card_style
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kulutus_tanaan
+                        card_height: 110
+                        gauge:
+                          units: "Tänään"
+                          title: "kWh"
+                          maxValue: 200
+                          majorTicks: ["0", "40", "80", "120", "160", "200"]
+                          highlights: [{"from": 120, "to": 200,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kwh_eilinen
+                        card_height: 110
+                        gauge:
+                          units: "Eilen"
+                          title: "kWh"
+                          maxValue: 200
+                          majorTicks: ["0", "40", "80", "120", "160", "200"]
+                          highlights: [{"from": 120, "to": 200,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kwh_viikko_ja_tanaan
+                        card_height: 110
+                        gauge:
+                          units: "Kuluva viikko"
+                          title: "kWh"
+                          maxValue: 1000
+                          majorTicks: ["0", "200", "400", "600", "800", "1000"]
+                          highlights: [{"from": 600, "to": 1000,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kwh_ed_viikko
+                        card_height: 110
+                        gauge:
+                          units: "Edellinen viikko"
+                          title: "kWh"
+                          maxValue: 1000
+                          majorTicks: ["0", "200", "400", "600", "800", "1000"]
+                          highlights: [{"from": 600, "to": 1000,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                  - type: horizontal-stack
+                    cards:
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kwh_kk_ja_tanaan
+                        card_height: 110
+                        gauge:
+                          units: "Kuluva kuukausi"
+                          title: "kWh"
+                          maxValue: 5000
+                          majorTicks: ["0", "1000", "2000", "3000", "4000", "5000"]
+                          highlights: [{"from": 3000, "to": 5000,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+                      - type: custom:canvas-gauge-card
+                        entity: sensor.kwh_ed_kk
+                        card_height: 110
+                        gauge:
+                          units: "Edellinen kuukausi"
+                          title: "kWh"
+                          maxValue: 5000
+                          majorTicks: ["0", "1000", "2000", "3000", "4000", "5000"]
+                          highlights: [{"from": 3000, "to": 5000,"color": "rgba(71, 126, 235, .8)"}]
+                          <<: *gauge_card_style
+          - break
+          - type: entities
+            <<: *base_style_nomargin
+            entities:
+              - type: custom:monster-card
+                card:
+                  show_header_toggle: false
+                  type: entities
+                  title: Automaatiot
+                filter:
+                  include:
+                    - domain: automation
+
+  - title: Pohjakuva
+    icon: mdi:floor-plan
+    panel: true
+    cards:
+      - type: picture-elements
+        style:
+          .: |
+            ha-card {
+              border-radius: 0px;
+            }
+        image: /local/House_Cut.JPG
+        elements:
+          - type: image
+            image: /local/Garage_Cut_no_floor.png
+            entity: automation.viestin_lahetys_kun_pesukone_on_pessyt
+            style:
+              top: 10%
+              left: 91%
+              width: 15%
+              border: 1px solid grey
+              box-shadow: 5px 5px 10px 0px rgba(0,0,0,0.15)
+            tap_action:
+              action: toggle
+            state_filter:
+              "on": saturate(2.2)
+              "off": hue-rotate(45deg)
+
+  - title: Test
+    panel: true
+    cards:
+      - type: custom:layout-card
+        column_width: 250
+        layout: vertical
+        cards:
+          - type: entities
+            <<: *base_style
+            title: "Pesutorni"
+            show_header_toggle: false
+            entities:
+              - sensor.pesukone_watts
+              - entity: timer.pesukone
+                name: Pesuaikaa jäljellä
+              - sensor.kuivausrumpu_watts
+              - entity: timer.kuivausrumpu
+                name: Kuivausaikaa jäljellä
