@@ -1,0 +1,62 @@
+custom:
+  # Muuttujat
+  base-hue: '220'
+  base-sat: '16%'
+  huesat: 'var(--base-hue), var(--base-sat),'
+  # Päävärit
+  primary-color: 'hsl(var(--huesat) 50%)'
+  background-color: 'hsl(var(--huesat) 20%)'
+  # Taustat
+  primary-background-color: 'var(--background-color)'
+  secondary-background-color: 'hsl(var(--huesat) 16%)'
+  paper-listbox-background-color: 'var(--background-color)'
+  paper-card-background-color: 'rgba(0, 0, 0, 0)'
+  table-row-background-color: 'hsl(var(--huesat) 12%)'
+  table-row-alternative-background-color: 'hsl(var(--huesat) 10%)'
+  paper-dialog-background-color: 'rgb(57,65,81)'
+  # Tekstit
+  primary-text-color: 'hsl(var(--huesat) 80%)'
+  text-primary-color: 'hsl(var(--huesat) 80%)'
+  secondary-text-color: 'hsl(var(--huesat) 80%)'
+  disabled-text-color: 'hsl(var(--huesat) 80%)'
+  sidebar-text_-_color: 'hsl(var(--huesat) 80%)'
+  sidebar-text-color: 'hsl(var(--huesat) 90%)'
+  paper-card-header-color: 'hsl(var(--base-hue), 90%, 70%)'
+  sidebar-icon-color: 'hsl(var(--base-hue), 80%, 80%)'
+  sidebar-selected-icon-color: 'hsl(var(--base-hue), 80%, 80%)'
+  sidebar-selected-text-color: 'hsl(var(--huesat) 80%)'
+  mdc-theme-primary: 'hsl(var(--base-hue), 80%, 80%)'
+  # Valikko
+  paper-listbox-color: 'hsl(var(--huesat) 50%)'
+  paper-grey-50: 'hsl(var(--huesat) 50%)'
+  paper-grey-200: 'hsla(var(--huesat) 26%)'
+  border-color: 'hsla(var(--base-hue), 90%, 50%, 0.6)'
+  # Kortit
+  paper-item-icon-color: 'hsl(var(--base-hue), 80%, 80%)'
+  paper-item-icon-active-color: 'var(--paper-item-icon-color)'
+  paper-item-icon_-_color: 'var(--paper-item-icon-color)'
+  paper-item-selected_-_background-color: 'hsla(0, 0%, 0%, 0.2)'
+  paper-tabs-selection-bar-color: 'hsla(0, 0%, 0%, 0.2)'
+  ha-card-border-radius: "10px"
+  ha-card-box-shadow: 'none'
+  # Otsikot
+  label-badge-background-color: 'var(--paper-card-background-color)'
+  label-badge-text-color: 'var(--primary-text-color)'
+  # Varjot
+  shadow-elevation-2dp_-_box-shadow: 'inset 0px 0px 0px 4px hsl(var(--huesat) 18%)'
+  shadow-elevation-16dp_-_box-shadow: 'inset 0px 0px 0px 4px hsl(var(--huesat) 28%)'
+  # Kytkimet
+  paper-toggle-button-checked-button-color: 'hsl(var(--base-hue), 80%, 60%)'
+  paper-toggle-button-checked-bar-color: 'hsl(var(--base-hue), 90%, 50%)'
+  paper-toggle-button-unchecked-button-color: 'hsl(var(--base-hue), 80%, 60%)'
+  paper-toggle-button-unchecked-bar-color: 'hsl(var(--huesat) 10%)'
+  # Liukusäätimet
+  paper-slider-knob-color:  'hsl(var(--base-hue), 80%, 60%)'
+  paper-slider-knob-start-color: 'hsl(var(--base-hue), 80%, 60%)'
+  paper-slider-pin-color:  'hsl(var(--base-hue), 90%, 50%)'
+  paper-slider-active-color:  'hsla(var(--base-hue), 90%, 50%, 0.6)'
+  paper-slider-container-color: 'hsla(var(--huesat) 10%, 0.6)'
+  paper-slider-secondary-color: 'hsl(var(--huesat) 90%)'
+  paper-slider-disabled-active-color: 'hsl(var(--base-hue), 80%, 25%)'
+  paper-slider-disabled-secondary-color: 'hsl(var(--base-hue), 80%, 25%)'
+  paper-dialog-color: 'hsl(var(--base-hue), 20%, 80%)'
