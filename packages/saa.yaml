@@ -1,9 +1,6 @@
 # Home Assistant - Säätiedot
 # (c) Kimmo Hyötynen - https://hyotynen.iki.fi
 
-weather:
-  - platform: met
-
 sun:
 
 homeassistant:

@@ -21,9 +21,12 @@ map:
 config:
 updater:
 conversation:
+mobile_app:
 ios:
 system_health:
-custom_updater:
+breaking_changes:
+hacs:
+  token: !secret my_github_access_token
 
 homekit: !include homekit.yaml
 history: !include history.yaml
@@ -33,10 +36,7 @@ lovelace:
   mode: yaml
 
 frontend:
-  themes:
-    custom:
-      primary-color: "#204959"
-      paper-card-background-color: "rgba(235,244,247,.9)"
+  themes: !include themes.yaml
 
 http:
   ip_ban_enabled: True
@@ -52,7 +52,8 @@ mysensors:
 
 # Text to speech
 tts:
-  - platform: google
+  - platform: google_translate
+    service_name: google_say
     cache: true
     cache_dir: /tmp/tts
 
@@ -91,3 +92,5 @@ calendar:
     url: !secret caldav_url 
     username: !secret caldav_username
     password: !secret caldav_password
+    calendars:
+      - Menot

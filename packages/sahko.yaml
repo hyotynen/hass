@@ -85,7 +85,7 @@ sensor:
     db_url: !secret kulutus_db_url
     queries:
       - name: kwh_eilinen
-        query: 'SELECT * FROM kulutus WHERE date = CURDATE() - 1'
+        query: 'SELECT * FROM kulutus WHERE date = DATE_ADD(CURDATE(), INTERVAL -1 DAY)'
         column: 'kWh'
         unit_of_measurement: kWh
 
@@ -94,8 +94,10 @@ sensor:
     db_url: !secret kulutus_db_url
     queries:
       - name: kwh_viikko
-        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE yearweek(DATE(date), 1) = yearweek(curdate(), 1)'
-        column: 'ROUND(SUM(kWh),2)'
+        query: 'SELECT IFNULL((SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE yearweek(DATE(date), 1) = yearweek(curdate(), 1)),0)'
+#        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE yearweek(DATE(date), 1) = yearweek(curdate(), 1)'
+        column: 'IFNULL((SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE yearweek(DATE(date), 1) = yearweek(curdate(), 1)),0)'
+#        column: 'ROUND(SUM(kWh),2)'
         unit_of_measurement: kWh
 
   - platform: sql
@@ -112,8 +114,10 @@ sensor:
     db_url: !secret kulutus_db_url
     queries:
       - name: kwh_kk
-        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE) AND MONTH(date) = MONTH(CURRENT_DATE)'
-        column: 'ROUND(SUM(kWh),2)'
+        query: 'SELECT IFNULL((SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE) AND MONTH(date) = MONTH(CURRENT_DATE)),0)'
+#        query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE) AND MONTH(date) = MONTH(CURRENT_DATE)'
+        column: 'IFNULL((SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE) AND MONTH(date) = MONTH(CURRENT_DATE)),0)'
+#        column: 'ROUND(SUM(kWh),2)'
         unit_of_measurement: kWh
 
   - platform: sql
@@ -124,6 +128,18 @@ sensor:
         query: 'SELECT ROUND(SUM(kWh),2) FROM kulutus WHERE YEAR(date) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH) AND MONTH(date) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)'
         column: 'ROUND(SUM(kWh),2)'
         unit_of_measurement: kWh
+
+  - platform: template
+    sensors:
+      kwh_viikko_ja_tanaan:
+        friendly_name: "Kuluva viikko"
+        unit_of_measurement: 'kWh'
+        value_template: "{{(states.sensor.kulutus_tanaan.state|float+states.sensor.kwh_viikko.state|float)|round(2)}}"
+
+      kwh_kk_ja_tanaan:
+        friendly_name: "Kuluva kuukausi"
+        unit_of_measurement: 'kWh'
+        value_template: "{{(states.sensor.kulutus_tanaan.state|float+states.sensor.kwh_kk.state|float)|round(2)}}"
 
 automation:
   - alias: "Lattialämmitys pois raja ylitettäessä"

@@ -15,13 +15,13 @@ sensor:
     name: leak_tripped
     command: "cat /home/homeassistant/.homeassistant/mysensors.json"
     value_template: '{{ value_json["0"]["children"]["2"]["values"]["16"]|int }}'
-    scan_interval: 30
+    scan_interval: 60
   - platform: command_line
     name: leak_deviation
     command: "cat /home/homeassistant/.homeassistant/mysensors.json"
     value_template: '{{ value_json["0"]["children"]["2"]["values"]["26"]|int }}'
     unit_of_measurement: "%"
-    scan_interval: 30
+    scan_interval: 60
   - platform: template
     sensors:
       leak_status:
