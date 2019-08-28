@@ -1,14 +1,22 @@
-# Home Assistant - Kosteusanturi
+# Home Assistant - Vesi ja Kosteusanturi
 # (c) Kimmo Hyötynen - https://hyotynen.iki.fi
 
 homeassistant:
   customize:
     sensor.leak_status:
-      friendly_name: Tila
+      friendly_name: Kosteus
       icon: mdi:pipe-leak
     sensor.leak_deviation:
-      friendly_name: Taso
+      friendly_name: Kosteustaso
       icon: mdi:water-percent
+    switch.mainwater:
+      icon: mdi:water-pump
+
+input_boolean:
+  leak_tripped:
+    name: Vesivuoto havaittu
+    initial: off
+    icon: mdi:pipe-leak
 
 sensor:
   - platform: command_line
@@ -28,7 +36,7 @@ sensor:
         value_template: '{%if states.sensor.leak_deviation.state |int>120 %}Kaapelivika!{%elif states.sensor.leak_deviation.state |int<85%}Vesivuoto!{%elif states.sensor.leak_deviation.state |int<90 and states.sensor.leak_deviation.state |int>85%}Kosteutta!{%else%}Ei kosteutta{%endif%}'
 
 automation:
-  - alias: "Viesti kosteusanturin varoituksesta"
+  - alias: "Kosteusanturin varoitus"
     trigger:
       platform: state
       entity_id: sensor.leak_tripped
@@ -39,12 +47,17 @@ automation:
       above: 85
       below: 90
     action:
+      - service: switch.turn_off
+        entity_id: switch.mainwater
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.leak_tripped
       - service: notify.ios
         data:
-          message: "Kosteutta havaittu keittiön kaappien alla."
+          message: "Kosteutta havaittu keittiön kaappien alla. Päävesiventtiili suljettu."
           title: Kosteusvaroitus!
 
-  - alias: "Viesti kosteusanturin hälytyksestä"
+  - alias: "Kosteusanturin hälytys"
     trigger:
       platform: state
       entity_id: sensor.leak_tripped
@@ -54,9 +67,14 @@ automation:
       entity_id: sensor.leak_deviation
       below: 85
     action:
+      - service: switch.turn_off
+        entity_id: switch.mainwater
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.leak_tripped
       - service: notify.ios
         data:
-          message: "Vesivuoto havaittu keittiön kaappien alla."
+          message: "Vesivuoto havaittu keittiön kaappien alla. Päävesiventtiili suljettu."
           title: Vesivuotohälytys!
 
   - alias: "Viesti kosteusanturin viasta"
