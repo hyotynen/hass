@@ -71,7 +71,7 @@
 #include <MySensors.h>
 
 #define DIGITAL_INPUT_SENSOR 5  // The digital input you attached your light sensor. 5 => D1
-#define PULSE_FACTOR 10000       // Number of blinks per of your meter
+#define PULSE_FACTOR 10000       // Number of blinks per kWh of your meter
 #define SLEEP_MODE false        // Watt value can only be reported when sleep mode is false.
 #define MAX_WATT 10000          // Max watt value to report. This filters outliers.
 #define CHILD_ID 1              // Id of the sensor child
@@ -90,6 +90,8 @@ uint32_t lastSend;
 MyMessage wattMsg(CHILD_ID,V_WATT);
 MyMessage kWhMsg(CHILD_ID,V_KWH);
 MyMessage pcMsg(CHILD_ID,V_VAR1);
+
+void ICACHE_RAM_ATTR onPulse();
 
 void setup()
 {
