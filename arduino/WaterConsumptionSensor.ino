@@ -32,6 +32,8 @@ uint32_t READ_FREQUENCY = 1;               // ms between sensor reads
 MyMessage flowMsg(CHILD_ID, V_FLOW);
 MyMessage volumeMsg(CHILD_ID, V_VOLUME);
 MyMessage lastCounterMsg(CHILD_ID, V_VAR1);
+MyMessage curVolumeMsg(CHILD_ID, V_VAR2);
+MyMessage durationMsg(CHILD_ID, V_VAR3);
 
 double ppl = ((double)PULSE_FACTOR) / 1000;      // Pulses per liter
 
@@ -47,6 +49,11 @@ double oldvolume = 0;
 uint32_t lastSend = 0;
 uint32_t lastPulse = 0;
 uint32_t lastRead = 0;
+double curVolume = 0;
+double oldCurVolume = 0;
+uint32_t startPulse = 0;
+uint32_t duration = 0;
+uint32_t flowStart = 0;
 uint32_t readDelay = 10000;       // delay before first read to get network ready
 
 // LED
@@ -61,7 +68,7 @@ int sensorValue = 0;
 #include <QueueArray.h>
 float distance, sens;
 float alpha = 0.02;               // smoothing the measurements, smaller is smoother
-bool trend = false;               // decreasing = false, increasing = true
+bool trend = true;                // decreasing = false, increasing = true
 float slope = 0;                  // slope value
 float threshold = 0.5;            // threshold of two consecutive measurements, higher value for more distance difference required. lower value increases false positives
 int measurementCount = 1;         // number of measurements to store. higher number for extra smoothing
@@ -74,7 +81,7 @@ bool debug = false;               // output debugging info to console
 void setup()
 {
   pulseCount = oldPulseCount = 0;
-
+  
   // Fetch last known pulse count value from gw
   request(CHILD_ID, V_VAR1);
 
@@ -159,13 +166,16 @@ void loop()
 
     // No Pulse count received in 30 sec
     if (currentTime - lastPulse > 30000) {
+      Serial.println("Flow stopped");
       flow = 0;
+      startPulse = pulseCount;
+      flowStart = lastPulse;
     }
 
-    if (!SLEEP_MODE && flow != oldflow) {
+    if (flow != oldflow) {
       oldflow = flow;
 
-      Serial.print("l/min:");
+      Serial.print("l/min: ");
       Serial.println(flow);
 
       // Check that we don't get unreasonable large flow value.
@@ -176,23 +186,33 @@ void loop()
     }
 
     // Pulse count has changed
-    if ((pulseCount != oldPulseCount) || (!SLEEP_MODE)) {
+    if (pulseCount != oldPulseCount) {      
       oldPulseCount = pulseCount;
 
-      Serial.print("pulsecount:");
+      Serial.print("pulsecount: ");
       Serial.println(pulseCount);
-
-      send(lastCounterMsg.set(pulseCount));           // Send  pulsecount value to gw in VAR1
+      send(lastCounterMsg.set(pulseCount));           // Send pulsecount value to gw
 
       double volume = ((double)pulseCount / ((double)PULSE_FACTOR));
-      if ((volume != oldvolume) || (!SLEEP_MODE)) {
+      if (volume != oldvolume) {
         oldvolume = volume;
-
-        Serial.print("volume:");
+        Serial.print("volume: ");
         Serial.println(volume, 4);
-
         send(volumeMsg.set(volume, 4));               // Send volume value to gw
       }
+    }
+
+    curVolume = (((double)pulseCount - (double)startPulse) / ((double)PULSE_FACTOR));
+    duration = (lastPulse - flowStart) / 1000;
+    if (curVolume != oldCurVolume) {
+      oldCurVolume = curVolume;
+      Serial.print("Current flow volume: ");
+      Serial.print(curVolume, 4);
+      Serial.print(" in ");
+      Serial.print(duration);
+      Serial.println(" seconds");
+      send(curVolumeMsg.set(curVolume, 4));       // Send current flow volume to gw
+      send(durationMsg.set(duration, 0));         // Send current flow duration to gw
     }
   }
   if (SLEEP_MODE) {
@@ -201,10 +221,10 @@ void loop()
 
   if (debug)
   {
-//    Serial.println(sens);         // Raw sensor value
-//    Serial.println(distance);     // Smoothed value
-//    Serial.println(slope);
-//    Serial.println(trend);
+    Serial.println(sens);         // Raw sensor value
+    Serial.println(distance);     // Smoothed value
+    Serial.println(slope);
+    Serial.println(trend);
   }
 }
 
@@ -227,6 +247,11 @@ void onPulse()
     uint32_t interval = newBlink - lastBlink;
 
     if (interval != 0) {
+      if (flow == 0) {
+        Serial.println("Flow started");
+        startPulse = pulseCount;
+        flowStart = millis();
+      }
       lastPulse = millis();
       flow = (60000000.0 / interval) / ppl;
     }
